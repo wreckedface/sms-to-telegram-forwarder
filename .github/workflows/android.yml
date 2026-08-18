@@ -1,0 +1,73 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build APK from uploaded ZIP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Extract Android project
+        shell: bash
+        run: |
+          set -e
+          ZIP_FILE="$(find . -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+          if [ -z "$ZIP_FILE" ]; then
+            echo "No project ZIP found in repository root."
+            exit 1
+          fi
+
+          rm -rf android-project
+          mkdir android-project
+          unzip -q "$ZIP_FILE" -d android-project
+
+          echo "Extracted files:"
+          find android-project -maxdepth 3 -type f | sort
+
+      - name: Fix Gradle settings import
+        shell: bash
+        run: |
+          set -e
+          SETTINGS="android-project/settings.gradle.kts"
+          if ! grep -q "import org.gradle.api.initialization.resolve.RepositoriesMode" "$SETTINGS"; then
+            sed -i '1i import org.gradle.api.initialization.resolve.RepositoriesMode' "$SETTINGS"
+          fi
+
+      - name: Verify Android project
+        run: |
+          test -f android-project/settings.gradle.kts
+          test -f android-project/build.gradle.kts
+          test -f android-project/app/build.gradle.kts
+          test -f android-project/app/src/main/AndroidManifest.xml
+
+      - name: Build debug APK
+        run: gradle -p android-project assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sms-to-telegram-debug
+          path: android-project/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error 
