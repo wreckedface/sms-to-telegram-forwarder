@@ -1,0 +1,1 @@
+<resources><style name="Theme.SmsTelegram" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#229ED9</item><item name="android:navigationBarColor">#07111F</item><item name="android:statusBarColor">#07111F</item></style></resources>
