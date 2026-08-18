@@ -6,9 +6,12 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   build:
-    name: Build APK from uploaded ZIP
+    name: Build debug APK
     runs-on: ubuntu-latest
 
     steps:
@@ -20,54 +23,34 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
-      - name: Extract Android project
-        shell: bash
-        run: |
-          set -e
-          ZIP_FILE="$(find . -maxdepth 1 -type f -name '*.zip' | head -n 1)"
-          if [ -z "$ZIP_FILE" ]; then
-            echo "No project ZIP found in repository root."
-            exit 1
-          fi
-
-          rm -rf android-project
-          mkdir android-project
-          unzip -q "$ZIP_FILE" -d android-project
-
-          echo "Extracted files:"
-          find android-project -maxdepth 3 -type f | sort
-
-      - name: Fix Gradle settings import
-        shell: bash
-        run: |
-          set -e
-          SETTINGS="android-project/settings.gradle.kts"
-          if ! grep -q "import org.gradle.api.initialization.resolve.RepositoriesMode" "$SETTINGS"; then
-            sed -i '1i import org.gradle.api.initialization.resolve.RepositoriesMode' "$SETTINGS"
-          fi
-
       - name: Verify Android project
         run: |
-          test -f android-project/settings.gradle.kts
-          test -f android-project/build.gradle.kts
-          test -f android-project/app/build.gradle.kts
-          test -f android-project/app/src/main/AndroidManifest.xml
+          set -e
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+          test -f app/src/main/AndroidManifest.xml
+          echo "Android project structure OK"
 
       - name: Build debug APK
-        run: gradle -p android-project assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: sms-to-telegram-debug
-          path: android-project/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error 
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
