@@ -19,7 +19,7 @@ class SmsReceiver:BroadcastReceiver(){
   if(!Filter.allow(c,sender,body)){Stats.filtered(c);return}
   val time=SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.getDefault()).format(Date())
   val fp=History.fingerprint(sender,body,time);if(Store.dedupe(c)&&History.seen(c,fp))return;History.mark(c,fp)
-  val safe=if(Store.redact(c))body.replace(Regex("\b\d{4,8}\b"),"••••") else body
+  val safe=if(Store.redact(c))body.replace(Regex("\\b\\d{4,8}\\b"),"••••") else body
   val msg="📩 New SMS\nFrom: $sender\n\n$safe\n\n🕒 $time"
   Telegram.send(c,msg,object:Telegram.Callback{
    override fun done(ok:Boolean,detail:String){
